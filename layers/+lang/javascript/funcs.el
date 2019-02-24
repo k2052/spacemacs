@@ -89,38 +89,3 @@
 (defun spacemacs/js2-refactor-require ()
   "Lazy load js2-refactor"
   (require 'js2-refactor))
-
-
-;; skewer
-
-(defun spacemacs/skewer-start-repl ()
-  "Attach a browser to Emacs and start a skewer REPL."
-  (interactive)
-  (run-skewer)
-  (skewer-repl))
-
-(defun spacemacs/skewer-load-buffer-and-focus ()
-  "Execute whole buffer in browser and switch to REPL in insert state."
-  (interactive)
-  (skewer-load-buffer)
-  (skewer-repl)
-  (evil-insert-state))
-
-(defun spacemacs/skewer-eval-defun-and-focus ()
-  "Execute function at point in browser and switch to REPL in insert state."
-  (interactive)
-  (skewer-eval-defun)
-  (skewer-repl)
-  (evil-insert-state))
-
-(defun spacemacs/skewer-eval-region (beg end)
-  "Execute the region as JavaScript code in the attached browser."
-  (interactive "r")
-  (skewer-eval (buffer-substring beg end) #'skewer-post-minibuffer))
-
-(defun spacemacs/skewer-eval-region-and-focus (beg end)
-  "Execute the region in browser and swith to REPL in insert state."
-  (interactive "r")
-  (spacemacs/skewer-eval-region beg end)
-  (skewer-repl)
-  (evil-insert-state))
