@@ -156,24 +156,23 @@
   (if (eq javascript-fmt-tool 'prettier)
       (add-to-list 'spacemacs--prettier-modes 'js2-mode)))
 
-(defun javascript/init-indium-mode ()
+(defun javascript/init-indium ()
   (use-package indium
     :defer t
     :init
     (progn
-      (spacemacs/register-repl 'indium-interaction-mode
-                               'indium-launch
-                               "sk")
-      (add-hook 'js2-mode-hook 'indium-interaction-mode))
+      (require 'indium)
+      (add-hook 'js-mode-hook #'indium-interaction-mode))
     :config
     (progn
       (spacemacs/set-leader-keys-for-major-mode 'js2-mode
         "'" 'indium-connect
         "ee" 'indium-eval-last-node
-        "sb" 'indium-eval-buffer
-        "si" 'indium-launch
+        "eb" 'indium-eval-buffer
+        "er" 'indium-eval-region
+        "sl" 'indium-launch
         "sf" 'indium-eval-defun
-        "sr" 'indium-eval-region
+        "sr" 'indium-reload
         "ss" 'indium-switch-to-repl-buffer))))
 
 (defun javascript/post-init-tern ()

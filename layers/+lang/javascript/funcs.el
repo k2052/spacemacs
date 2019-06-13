@@ -89,3 +89,7 @@
 (defun spacemacs/js2-refactor-require ()
   "Lazy load js2-refactor"
   (require 'js2-refactor))
+
+(defun spacemacs/js2-indium-require ()
+  "lazy require indium"
+  (require 'indium))
