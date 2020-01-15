@@ -18,6 +18,7 @@
         helm-ag
         helm-descbinds
         helm-flx
+        (helm-ls-git :require git)
         helm-make
         helm-mode-manager
         helm-projectile
@@ -86,6 +87,7 @@
       (spacemacs||set-helm-key "<f1>" helm-apropos)
       (spacemacs||set-helm-key "a'"   helm-available-repls)
       (spacemacs||set-helm-key "bb"   helm-mini)
+      (spacemacs||set-helm-key "bU"   spacemacs/helm-buffers-list-unfiltered)
       (spacemacs||set-helm-key "Cl"   helm-colors)
       (spacemacs||set-helm-key "ff"   spacemacs/helm-find-files)
       (spacemacs||set-helm-key "fF"   helm-find-files)
@@ -117,7 +119,13 @@
       (spacemacs||set-helm-key "swg" helm-google-suggest)
       (with-eval-after-load 'helm-files
         (define-key helm-find-files-map
-          (kbd "C-c C-e") 'spacemacs/helm-find-files-edit))
+          (kbd "C-c C-e") 'spacemacs/helm-find-files-edit)
+        (defun spacemacs//add-action-helm-find-files-edit ()
+          (helm-add-action-to-source
+          "Edit files in dired `C-c C-e'" 'spacemacs//helm-find-files-edit
+          helm-source-find-files))
+        (add-hook 'helm-find-files-before-init-hook
+                  'spacemacs//add-action-helm-find-files-edit))
       ;; Add minibuffer history with `helm-minibuffer-history'
       (define-key minibuffer-local-map (kbd "C-c C-l") 'helm-minibuffer-history)
       ;; Delay this key bindings to override the defaults
@@ -149,9 +157,15 @@
       (helm-mode)
       (spacemacs|hide-lighter helm-mode)
       (advice-add 'helm-grep-save-results-1 :after 'spacemacs//gne-init-helm-grep)
-      ;; helm-locate uses es (from everything on windows which doesnt like fuzzy)
+      ;; helm-locate uses es (from everything on windows which doesn't like fuzzy)
       (helm-locate-set-command)
       (setq helm-locate-fuzzy-match (string-match "locate" helm-locate-command))
+      (setq helm-boring-buffer-regexp-list
+            (append helm-boring-buffer-regexp-list
+                    spacemacs-useless-buffers-regexp))
+      (setq helm-white-buffer-regexp-list
+            (append helm-white-buffer-regexp-list
+                    spacemacs-useful-buffers-regexp))
       ;; alter helm-bookmark key bindings to be simpler
       (defun simpler-helm-bookmark-keybindings ()
         (define-key helm-bookmark-map (kbd "C-d") 'helm-bookmark-run-delete)
@@ -181,7 +195,17 @@
       ;; to search using rg/ag/pt/whatever instead of just grep
       (with-eval-after-load 'helm-projectile
         (define-key helm-projectile-projects-map
-          (kbd "C-s") 'spacemacs/helm-projectile-grep))
+          (kbd "C-s") 'spacemacs/helm-projectile-grep)
+        ;; `spacemacs/helm-projectile-grep' calls:
+        ;; `spacemacs/helm-project-smart-do-search-in-dir'
+        ;; which needs to be an action.
+        ;; Delete the current action.
+        (helm-delete-action-from-source
+         "Grep in projects `C-s'" helm-source-projectile-projects)
+        (helm-add-action-to-source
+         "Search in projects `C-s'"
+         'spacemacs/helm-project-smart-do-search-in-dir
+         helm-source-projectile-projects))
 
       ;; evilify the helm-grep buffer
       (evilified-state-evilify helm-grep-mode helm-grep-mode-map
@@ -272,6 +296,11 @@
 (defun helm/init-helm-flx ()
   (use-package helm-flx
     :defer (spacemacs/defer)))
+
+(defun helm/init-helm-ls-git ()
+  (use-package helm-ls-git
+    :defer t
+    :init (spacemacs/set-leader-keys "gff" 'helm-ls-git-ls)))
 
 (defun helm/init-helm-make ()
   (use-package helm-make
@@ -396,7 +425,7 @@
 
 (defun helm/init-helm-xref ()
   (use-package helm-xref
-    :commands (helm-xref-show-xrefs)
+    :commands (helm-xref-show-xrefs-27 helm-xref-show-xrefs)
     :init
     (progn
       ;; This is required to make `xref-find-references' not give a prompt.
@@ -410,7 +439,9 @@
                                              xref-find-references
                                              spacemacs/jump-to-definition))
       ;; Use helm-xref to display `xref.el' results.
-      (setq xref-show-xrefs-function #'helm-xref-show-xrefs))))
+      (setq xref-show-xrefs-function (if (< emacs-major-version 27)
+                                         #'helm-xref-show-xrefs
+                                       #'helm-xref-show-xrefs-27)))))
 
 
 (defun helm/post-init-imenu ()

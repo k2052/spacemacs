@@ -46,5 +46,50 @@
     (should (eq 'spacemacs-base (third configuration-layer--used-layers)))))
 
 ;; ---------------------------------------------------------------------------
-;; Lazy installation of layers
+;; configuration-layer//stable-elpa-verify-archive
 ;; ---------------------------------------------------------------------------
+
+(ert-deftest test-stable-elpa-verify-archive--verification-ok ()
+  ;; We gonna skip this test while testing PRs. FIXME: Handle this better.
+  (skip-unless (not (string= (getenv "CIRCLECI") "true")))
+  (cl-letf (((symbol-function 'configuration-layer//stable-elpa-tarball-local-file)
+             (lambda ()
+               (concat spacemacs-test-directory
+                       "core/data/signed-test-stable-elpa.tar.gz")))
+            ((symbol-function 'configuration-layer//stable-elpa-tarball-local-sign-file)
+             (lambda ()
+               (concat spacemacs-test-directory
+                       "core/data/signed-test-stable-elpa.tar.gz.sig")))
+            ((symbol-function 'configuration-layer//stable-elpa-ask-to-continue)
+             (lambda (x)
+               (message "Verification Error: %s" x)
+               nil))
+            ((symbol-function 'configuration-layer//error)
+             (lambda (x)
+               (message "Fatal Error: %s" x)
+               nil))
+            ((symbol-function 'message) 'ignore))
+    (should (equal t (configuration-layer//stable-elpa-verify-archive)))))
+
+(ert-deftest test-stable-elpa-verify-archive--verification-failed ()
+  (let (verification-error)
+    (cl-letf (((symbol-function 'configuration-layer//stable-elpa-tarball-local-file)
+               (lambda ()
+                 (concat spacemacs-test-directory
+                         "core/data/test-stable-elpa.tar.gz")))
+              ((symbol-function 'configuration-layer//stable-elpa-tarball-local-sign-file)
+               (lambda ()
+                 (concat spacemacs-test-directory
+                         "core/data/signed-test-stable-elpa.tar.gz.sig")))
+              ((symbol-function 'configuration-layer//stable-elpa-ask-to-continue)
+               (lambda (x)
+                 (setq verification-error x)
+                 nil))
+              ((symbol-function 'configuration-layer//error)
+               (lambda (x)
+                 (message "Fatal Error: %s" x)
+                 nil))
+              ((symbol-function 'message) 'ignore))
+      (should (and (null (configuration-layer//stable-elpa-verify-archive))
+                   (string-match-p "^Verification failed!.*"
+                                   verification-error))))))

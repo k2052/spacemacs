@@ -44,6 +44,13 @@
       (plist-put props :fuzzy-match (eq 'always helm-use-fuzzy))))
   (apply f args))
 
+(defun spacemacs//helm-find-files-enable-helm--in-fuzzy ()
+  "Enabling `helm--in-fuzzy' with the hook:
+`helm-find-files-after-init-hook'. Fixes the error:
+Helm issued errors: helm-match-from-candidates in source `Actions': wrong-type-argument (stringp nil)
+When searching in the helm-find-files (`SPC f f') actions (`C-z')."
+  (setq helm--in-fuzzy t))
+
 ;; Helm Header line
 
 (defun spacemacs//helm-hide-minibuffer-maybe ()
@@ -195,8 +202,10 @@ See https://github.com/syl20bnr/spacemacs/issues/3700"
    ((or (eq 'vim style)
         (and (eq 'hybrid style)
              hybrid-style-enable-hjkl-bindings))
-    (define-key ivy-minibuffer-map (kbd "C-j") 'ivy-next-line)
-    (define-key ivy-minibuffer-map (kbd "C-k") 'ivy-previous-line)
+    (dolist (map (list ivy-minibuffer-map
+                       ivy-switch-buffer-map))
+      (define-key map (kbd "C-j") 'ivy-next-line)
+      (define-key map (kbd "C-k") 'ivy-previous-line))
     (define-key ivy-minibuffer-map (kbd "C-h") (kbd "DEL"))
     ;; Move C-h to C-S-h
     (define-key ivy-minibuffer-map (kbd "C-S-h") help-map)

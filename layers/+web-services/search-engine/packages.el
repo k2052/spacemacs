@@ -25,7 +25,7 @@
       (spacemacs/set-leader-keys
         "a/" 'spacemacs/search-engine-select)
       (setq search-engine-alist
-            '((amazon
+            `((amazon
                :name "Amazon"
                :url "https://www.amazon.com/s/ref=nb_sb_noss?url=search-alias%%3Daps&field-keywords=%s")
               (bing
@@ -77,7 +77,7 @@
                :name "Npmjs"
                :url "https://www.npmjs.com/search?q=%s")
               (hoogle
-               :name "Hoggle 5"
+               :name "Hoogle 5"
                :url "https://hoogle.haskell.org/?hoogle=%s")
               (haskell-packages
                :name "Hackage Package Search"
@@ -96,7 +96,11 @@
                :url "https://en.cppreference.com/mwiki/index.php?search=%s")
               (wolfram-alpha
                :name "Wolfram Alpha"
-               :url "https://www.wolframalpha.com/input/?i=%s")))
+               :url "https://www.wolframalpha.com/input/?i=%s")
+              (ctan
+               :name "CTAN"
+               :url "https://ctan.org/search?phrase=%s")
+              ,@search-engine-config-list))
       (dolist (engine search-engine-alist)
         (let ((func (intern (format "engine/search-%S" (car engine)))))
           (autoload func "engine-mode" nil 'interactive))))

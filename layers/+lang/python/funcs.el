@@ -1,6 +1,6 @@
 ;;; funcs.el --- Python Layer functions File for Spacemacs
 ;;
-;; Copyright (c) 2012-2018 Sylvain Benner & Contributors
+;; Copyright (c) 2012-2019 Sylvain Benner & Contributors
 ;;
 ;; Author: Sylvain Benner <sylvain.benner@gmail.com>
 ;; URL: https://github.com/syl20bnr/spacemacs
@@ -8,6 +8,12 @@
 ;; This file is not part of GNU Emacs.
 ;;
 ;;; License: GPLv3
+
+(defun spacemacs//python-formatter ()
+  "Returns selected python-formatter."
+  (or python-formatter (pcase python-backend
+                         ('lsp 'lsp)
+                         ('anaconda 'yapf))))
 
 (defun spacemacs//python-setup-backend ()
   "Conditionally setup python backend."
@@ -18,9 +24,15 @@
 
 (defun spacemacs//python-setup-company ()
   "Conditionally setup company based on backend."
-  (if (eq python-backend `anaconda)
-    (spacemacs//python-setup-anaconda-company)
-    (spacemacs//python-setup-lsp-company)))
+  (pcase python-backend
+    (`anaconda (spacemacs//python-setup-anaconda-company))
+    (`lsp (spacemacs//python-setup-lsp-company))))
+
+(defun spacemacs//python-setup-dap ()
+  "Conditionally setup elixir DAP integration."
+  ;; currently DAP is only available using LSP
+  (pcase python-backend
+    (`lsp (spacemacs//python-setup-lsp-dap))))
 
 (defun spacemacs//python-setup-eldoc ()
   "Conditionally setup eldoc based on backend."
@@ -61,14 +73,11 @@
 (defun spacemacs//python-setup-lsp ()
   "Setup lsp backend."
   (if (configuration-layer/layer-used-p 'lsp)
-      (lsp)
-    (message "`lsp' layer is not installed, please add `lsp' layer to your dotfile."))
-  (if (configuration-layer/layer-used-p 'dap)
-    (progn
-      (require 'dap-python)
-      (spacemacs/set-leader-keys-for-major-mode 'python-mode "db" nil)
-      (spacemacs/dap-bind-keys-for-mode 'python-mode))
-    (message "`dap' layer is not installed, please add `dap' layer to your dotfile.")))
+      (progn
+        (when (eq python-lsp-server 'mspyls)
+          (require 'lsp-python-ms))
+        (lsp))
+    (message "`lsp' layer is not installed, please add `lsp' layer to your dotfile.")))
 
 (defun spacemacs//python-setup-lsp-company ()
   "Setup lsp auto-completion."
@@ -82,14 +91,18 @@
         (company-mode))
     (message "`lsp' layer is not installed, please add `lsp' layer to your dotfile.")))
 
+(defun spacemacs//python-setup-lsp-dap ()
+  "Setup DAP integration."
+  (require 'dap-python))
+
 
 ;; others
 
 (defun spacemacs//python-default ()
   "Defaut settings for python buffers"
   (setq mode-name "Python"
-    tab-width python-tab-width
-    fill-column python-fill-column)
+        tab-width python-tab-width
+        fill-column python-fill-column)
 
   ;; since we changed the tab-width we need to manually call python-indent-guess-indent-offset here
   (when python-spacemacs-indent-guess
@@ -138,7 +151,7 @@ as the pyenv version then also return nil. This works around https://github.com/
 (defun spacemacs//python-setup-shell (&rest args)
   (if (spacemacs/pyenv-executable-find "ipython")
       (progn (setq python-shell-interpreter "ipython")
-             (if (version< (replace-regexp-in-string "[\r\n|\n]$" "" (shell-command-to-string (format "%s --version" (string-trim (spacemacs/pyenv-executable-find "ipython"))))) "5")
+             (if (version< (replace-regexp-in-string "[\r\n|\n]$" "" (shell-command-to-string (format "\"%s\" --version" (string-trim (spacemacs/pyenv-executable-find "ipython"))))) "5")
                  (setq python-shell-interpreter-args "-i")
                (setq python-shell-interpreter-args "--simple-prompt -i")))
     (progn
@@ -186,10 +199,10 @@ as the pyenv version then also return nil. This works around https://github.com/
   "autoflake --remove-all-unused-imports -i unused_imports.py"
   (interactive)
   (if (executable-find "autoflake")
-    (progn
-      (shell-command (format "autoflake --remove-all-unused-imports -i %s"
-                       (shell-quote-argument (buffer-file-name))))
-      (revert-buffer t t t))
+      (progn
+        (shell-command (format "autoflake --remove-all-unused-imports -i %s"
+                               (shell-quote-argument (buffer-file-name))))
+        (revert-buffer t t t))
     (message "Error: Cannot find autoflake executable.")))
 
 (defun spacemacs//pyenv-mode-set-local-version ()
@@ -203,30 +216,38 @@ as the pyenv version then also return nil. This works around https://github.com/
               (with-temp-buffer
                 (insert-file-contents-literally file-path)
                 (nth 0 (split-string (buffer-substring-no-properties
-                                       (line-beginning-position)
-                                       (line-end-position)))))))
+                                      (line-beginning-position)
+                                      (line-end-position)))))))
         (if (member version (pyenv-mode-versions))
-            (pyenv-mode-set version)
+            (progn
+              (setenv "VIRTUAL_ENV" version)
+              (pyenv-mode-set version))
           (message "pyenv: version `%s' is not installed (set by %s)"
                    version file-path))))))
 
 (defun spacemacs//pyvenv-mode-set-local-virtualenv ()
-  "Set pyvenv virtualenv from \".venv\" by looking in parent directories. handle directory or file"
+  "Set pyvenv virtualenv from \".venv\" by looking in parent directories.
+Handle \".venv\" being a virtualenv directory or a file specifying either
+absolute or relative virtualenv path. Relative path is checked relative to
+location of \".venv\" file, then relative to pyvenv-workon-home()."
   (interactive)
-  (let ((root-path (locate-dominating-file default-directory
-                                           ".venv")))
+  (let ((root-path (locate-dominating-file default-directory ".venv")))
     (when root-path
-      (let* ((file-path (expand-file-name ".venv" root-path))
-             (virtualenv
-              (if (file-directory-p file-path)
-                  file-path
-                (with-temp-buffer
-                  (insert-file-contents-literally file-path)
-                  (buffer-substring-no-properties (line-beginning-position)
-                                                  (line-end-position))))))
-        (if (file-directory-p virtualenv)
-            (pyvenv-activate virtualenv)
-          (pyvenv-workon virtualenv))))))
+      (let ((file-path (expand-file-name ".venv" root-path)))
+        (if (file-directory-p file-path)
+            (pyvenv-activate file-path)
+          (let* ((virtualenv-path-in-file
+                  (with-temp-buffer
+                    (insert-file-contents-literally file-path)
+                    (buffer-substring-no-properties (line-beginning-position)
+                                                    (line-end-position))))
+                 (virtualenv-abs-path
+                  (if (file-name-absolute-p virtualenv-path-in-file)
+                      virtualenv-path-in-file
+                    (format "%s/%s" root-path virtualenv-path-in-file))))
+            (if (file-directory-p virtualenv-abs-path)
+                (pyvenv-activate virtualenv-abs-path)
+              (pyvenv-workon virtualenv-path-in-file))))))))
 
 
 ;; Tests
@@ -250,7 +271,7 @@ as the pyenv version then also return nil. This works around https://github.com/
 (defun spacemacs//python-get-secondary-testrunner ()
   "Get the secondary test runner"
   (cdr (assoc (spacemacs//python-get-main-testrunner) '((pytest . nose)
-                                             (nose . pytest)))))
+                                                        (nose . pytest)))))
 
 (defun spacemacs//python-call-correct-test-function (arg funcalist)
   "Call a test function based on the chosen test framework.
@@ -258,7 +279,7 @@ ARG is the universal-argument which chooses between the main and
 the secondary test runner. FUNCALIST is an alist of the function
 to be called for each testrunner. "
   (when python-save-before-test
-      (save-buffer))
+    (save-buffer))
   (let* ((test-runner (if arg
                           (spacemacs//python-get-secondary-testrunner)
                         (spacemacs//python-get-main-testrunner)))
@@ -277,19 +298,19 @@ to be called for each testrunner. "
   "Run all tests."
   (interactive "P")
   (spacemacs//python-call-correct-test-function arg '((pytest . pytest-all)
-                                           (nose . nosetests-all))))
+                                                      (nose . nosetests-all))))
 
 (defun spacemacs/python-test-pdb-all (arg)
   "Run all tests in debug mode."
   (interactive "P")
   (spacemacs//python-call-correct-test-function arg '((pytest . pytest-pdb-all)
-                                           (nose . nosetests-pdb-all))))
+                                                      (nose . nosetests-pdb-all))))
 
 (defun spacemacs/python-test-module (arg)
   "Run all tests in the current module."
   (interactive "P")
   (spacemacs//python-call-correct-test-function arg '((pytest . pytest-module)
-                                           (nose . nosetests-module))))
+                                                      (nose . nosetests-module))))
 
 (defun spacemacs/python-test-pdb-module (arg)
   "Run all tests in the current module in debug mode."
@@ -313,13 +334,13 @@ to be called for each testrunner. "
   "Run current test."
   (interactive "P")
   (spacemacs//python-call-correct-test-function arg '((pytest . pytest-one)
-                                           (nose . nosetests-one))))
+                                                      (nose . nosetests-one))))
 
 (defun spacemacs/python-test-pdb-one (arg)
   "Run current test in debug mode."
   (interactive "P")
   (spacemacs//python-call-correct-test-function arg '((pytest . pytest-pdb-one)
-                                           (nose . nosetests-pdb-one))))
+                                                      (nose . nosetests-pdb-one))))
 
 (defun spacemacs//bind-python-testing-keys ()
   "Bind the keys for testing in Python."
@@ -348,22 +369,24 @@ to be called for each testrunner. "
 ;; Formatters
 
 (defun spacemacs//bind-python-formatter-keys ()
+  "Bind the python formatter keys.
+Bind formatter to '==' for LSP and '='for all other backends."
   (spacemacs/set-leader-keys-for-major-mode 'python-mode
-    "=" 'spacemacs/python-format-buffer))
+    (if (eq python-backend 'lsp)
+        "=="
+      "=") 'spacemacs/python-format-buffer))
 
 (defun spacemacs/python-format-buffer ()
+  "Bind possible python formatters."
   (interactive)
-  (pcase python-formatter
+  (pcase (spacemacs//python-formatter)
     (`yapf (yapfify-buffer))
     (`black (blacken-buffer))
+    (`lsp (lsp-format-buffer))
     (code (message "Unknown formatter: %S" code))))
 
 
 ;; REPL
-
-(defun spacemacs//inferior-python-setup-hook ()
-  "Setup REPL for python inferior process buffer."
-  (setq indent-tabs-mode t))
 
 (defun spacemacs/python-shell-send-buffer-switch ()
   "Send buffer content to shell and switch to it in insert mode."
@@ -455,3 +478,11 @@ to be called for each testrunner. "
 (when (version< emacs-version "25")
   (advice-add 'wisent-python-default-setup :after
               #'spacemacs//python-imenu-create-index-use-semantic-maybe))
+
+(defun spacemacs//bind-python-repl-keys ()
+  "Bind the keys for testing in Python."
+  (spacemacs/declare-prefix-for-mode 'inferior-python-mode "mv" "virtualenv")
+  (spacemacs/set-leader-keys-for-major-mode 'inferior-python-mode
+    "c" 'comint-clear-buffer
+    "r" 'pyvenv-restart-python
+    "vw" 'pyvenv-workon))

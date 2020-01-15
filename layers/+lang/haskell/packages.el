@@ -140,6 +140,7 @@
     (progn
       (dolist (mode haskell-modes)
         (spacemacs/set-leader-keys-for-major-mode mode
+          "gb" 'xref-pop-marker-stack
           "ht" 'dante-type-at
           "hT" 'spacemacs-haskell//dante-insert-type
           "hi" 'dante-info
@@ -287,6 +288,7 @@
 
       ;; configure C-c C-l so it doesn't throw any errors
       (bind-key "C-c C-l" 'haskell-process-load-file haskell-mode-map)
+      (bind-key "C-c C-z" 'haskell-interactive-switch haskell-mode-map)
 
       ;; Switch back to editor from REPL
       (spacemacs/set-leader-keys-for-major-mode 'haskell-interactive-mode

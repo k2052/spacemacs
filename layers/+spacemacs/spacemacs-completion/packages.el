@@ -46,8 +46,10 @@
     (add-hook 'helm-find-files-before-init-hook
               'spacemacs//set-dotted-directory)
     (add-hook 'spacemacs-editing-style-hook 'spacemacs//helm-hjkl-navigation)
+    (add-hook 'helm-find-files-after-init-hook
+              'spacemacs//helm-find-files-enable-helm--in-fuzzy)
     ;; setup advices
-    ;; fuzzy matching for all the sourcess
+    ;; fuzzy matching for all the sources
     (unless (eq helm-use-fuzzy 'source)
       (advice-add 'helm-make-source :around #'spacemacs//helm-make-source))
 
@@ -188,7 +190,8 @@ Current Action: %s(ivy-action-name)
       'spacemacs/ivy-transient-state/body)
     (define-key ivy-minibuffer-map (kbd "s-M-SPC")
       'spacemacs/ivy-transient-state/body)
-    ))
+    (define-key ivy-minibuffer-map (kbd "s-M-SPC")
+      'spacemacs/ivy-transient-state/body)))
 
 (defun spacemacs-completion/init-flx-ido ()
   (use-package flx-ido

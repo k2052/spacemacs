@@ -11,6 +11,7 @@
   - [[#advanced-buffer-information][Advanced buffer information]]
 - [[#key-bindings][Key bindings]]
   - [[#transient-state][Transient state]]
+  - [[#colorsfaces][Colors/Faces]]
 
 * Description
 This layer enables Ivy for completion. It will replace the default completion by
@@ -81,11 +82,12 @@ Some useful key bindings are presented in the following table.
 | ~RET~       | call default action on current candidate                                                             |
 | ~M-RET~     | the same as ~RET~ but doesn't close completion minibuffer                                            |
 | ~C-M-j~     | use current input immediately (this can be used to create a new file in Find File)                   |
-| ~tab~       | complete partially                                                                                   |
+| ~TAB~       | complete partially                                                                                   |
 | ~M-o~       | show the list of valid actions on current candidate (then press any of described keys to execute it) |
 | ~C-M-o~     | the same as ~M-o~ but doesn't close completion minibuffer                                            |
 | ~C-'~       | use avy to quickly select completion on current page (sometimes faster than using arrows)            |
 | ~<ESC>~     | close minibuffer                                                                                     |
+| ~C-M-k~     | kill buffer (in =ivy-switch-buffer= (~SPC b b~))                                                     |
 
 ** Transient state
 Press ~M-SPC~ anytime in Ivy to get into the transient state.
@@ -97,3 +99,12 @@ Press ~M-SPC~ anytime in Ivy to get into the transient state.
 | ~d~         | call default action on candidate                        |
 | ~g~         | the same as ~d~ but doesn't close completion minibuffer |
 | ~o~         | leave transient state                                   |
+
+** Colors/Faces
+
+| Key binding | Description             |
+|-------------+-------------------------|
+| ~SPC C e~   | =counsel-colors-emacs=  |
+| ~SPC C f~   | =counsel-colors-faces=  |
+| ~SPC C w~   | =counsel-colors-web=    |
+| ~SPC h d F~ | =counsel-describe-face= |
